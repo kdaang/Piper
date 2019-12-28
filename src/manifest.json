@@ -1,5 +1,5 @@
 {
-  "name": "Picture-in-Picture Extension (by Google)",
+  "name": "PIPER",
   "description": "Watch video using Picture-in-Picture",
   "version": "1.8",
   "icons": {
@@ -32,7 +32,9 @@
   "content_security_policy": "script-src 'self' https://ssl.google-analytics.com; object-src 'self'",
   "permissions": [
     "<all_urls>",
-    "storage"
+    "storage",
+    "tabs",
+    "webNavigation"
   ],
   "minimum_chrome_version": "69.0.3483.0",
   "manifest_version": 2
