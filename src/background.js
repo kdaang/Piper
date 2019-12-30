@@ -16,8 +16,8 @@ if (!document.pictureInPictureEnabled) {
     chrome.browserAction.setTitle({title: 'Picture-in-Picture NOT supported'});
 } else {
     chrome.tabs.onActivated.addListener(activeInfo => {
-        var lastTab = -1;
-        var pipTab = -1;
+        var lastTab = null;
+        var pipTab = null;
 
         chrome.storage.local.get(['lastTab', 'pipTab'], data => {
             lastTab = data['lastTab'] || null;
@@ -25,36 +25,56 @@ if (!document.pictureInPictureEnabled) {
 
             console.log(pipTab == null);
 
-            console.log('lastTabId: ' + lastTab.tabId + ' lastTabWindowId: ' + lastTab.windowId);
-            console.log('currentTabId: ' + activeInfo.tabId + ' currentTabWindowId: ' + activeInfo.windowId);
+            if (lastTab != null) {
+                console.log('lastTabId: ' + lastTab.tabId + ' lastTabWindowId: ' + lastTab.windowId);
+            }
+            if (activeInfo != null) {
+                console.log('currentTabId: ' + activeInfo.tabId + ' currentTabWindowId: ' + activeInfo.windowId);
+            }
             if (pipTab != null) {
                 console.log('pipTabId: ' + pipTab.tabId + ' pipTabWindowId: ' + pipTab.windowId);
             }
 
+            if (lastTab != null && lastTab.tabId === activeInfo.tabId && lastTab.windowId === activeInfo.windowId) {
+                return;
+            }
+
             var scriptTabId = -2;
-            if ((pipTab == null) && lastTab.windowId === activeInfo.windowId) {
+            if ((pipTab == null) && lastTab != null && lastTab.windowId === activeInfo.windowId) {
                 scriptTabId = lastTab.tabId;
             } else if (pipTab != null && pipTab.tabId === activeInfo.tabId && pipTab.windowId === activeInfo.windowId) {
                 scriptTabId = pipTab.tabId
             }
 
             if (scriptTabId !== -2) {
-                console.log('EXECUTED SCRIPT on tab: ' + scriptTabId);
-                chrome.tabs.executeScript(scriptTabId, {file: 'script.js', allFrames: true});
+                chrome.tabs.query({'pinned': false, 'windowId': activeInfo.windowId}, tabs => {
+                    for (var tab of tabs) {
+                        console.log('~~~~');
+                        console.log('LOOPER ID: ' + tab.id);
+                        console.log('~~~~');
+                        if (tab.id === scriptTabId) {
+                            console.log('EXECUTED SCRIPT on tab: ' + scriptTabId);
+                            chrome.tabs.executeScript(scriptTabId, {file: 'script.js', allFrames: true});
+                            break;
+                        }
+                    }
+                });
             }
 
             chrome.storage.local.set({'lastTab': {'tabId': activeInfo.tabId, 'windowId': activeInfo.windowId}});
         });
     });
-
-    chrome.tabs.onUpdated.addListener( (tabId, changeInfo, tab) => {
-        console.log('~~tabs.onUpdated~~');
-        console.log('tabID: ' + tabId);
-        console.log('tab.id: ' + tab.id);
-        console.log('~~~~~~~~~~~~~~~~~~~');
-        chrome.storage.local.set({'lastTab': {'tabId': tab.id, 'windowId': tab.windowId}});
-    });
 }
+
+chrome.tabs.onRemoved.addListener( (tabId, removeInfo) => {
+    chrome.storage.local.get(['pipTab'], data => {
+        var pipTab = data['pipTab'];
+
+        if (pipTab != null && pipTab.tabId === tabId && pipTab.windowId === removeInfo.windowId){
+            chrome.storage.local.set({'pipTab': null});
+        }
+    });
+});
 
 chrome.browserAction.onClicked.addListener(tab => {
     chrome.storage.local.clear()

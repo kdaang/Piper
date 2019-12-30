@@ -16,7 +16,7 @@
     const videos = Array.from(document.querySelectorAll('video'))
         .filter(video => video.readyState != 0)
         .filter(video => video.disablePictureInPicture == false)
-        .filter(video => !video.paused)
+        .filter(video => !video.paused || video.hasAttribute('__pip__'))
         .sort((v1, v2) => {
             const v1Rect = v1.getClientRects()[0];
             const v2Rect = v2.getClientRects()[0];
