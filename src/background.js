@@ -16,33 +16,34 @@ if (!document.pictureInPictureEnabled) {
     chrome.browserAction.setTitle({title: 'Picture-in-Picture NOT supported'});
 } else {
     chrome.tabs.onActivated.addListener(activeInfo => {
-        var currentTab = -1;
+        var lastTab = -1;
         var pipTab = -1;
 
-        chrome.storage.local.get(['currentTab', 'pipTab'], data => {
-            currentTab = data['currentTab'] || -1;
-            pipTab = data['pipTab'] || -1;
+        chrome.storage.local.get(['lastTab', 'pipTab'], data => {
+            lastTab = data['lastTab'] || null;
+            pipTab = data['pipTab'] || null;
 
-            console.log(data);
+            console.log(pipTab == null);
 
-            console.log('tabID: ' + activeInfo.tabId);
-            console.log('currentTab: ' + currentTab);
-            console.log('pipID: ' + pipTab);
-            // console.log('windowID: ' + activeInfo.windowId);
-            var scriptTab = -2;
-            if ((pipTab === -1)) {
-                scriptTab = currentTab;
-            } else if (pipTab === activeInfo.tabId) {
-                scriptTab = pipTab
+            console.log('lastTabId: ' + lastTab.tabId + ' lastTabWindowId: ' + lastTab.windowId);
+            console.log('currentTabId: ' + activeInfo.tabId + ' currentTabWindowId: ' + activeInfo.windowId);
+            if (pipTab != null) {
+                console.log('pipTabId: ' + pipTab.tabId + ' pipTabWindowId: ' + pipTab.windowId);
             }
 
-            if (scriptTab !== -2) {
-                console.log('EXECUTED SCRIPT on tab: ' + scriptTab);
-                chrome.tabs.executeScript(scriptTab, {file: 'script.js', allFrames: true});
+            var scriptTabId = -2;
+            if ((pipTab == null) && lastTab.windowId === activeInfo.windowId) {
+                scriptTabId = lastTab.tabId;
+            } else if (pipTab != null && pipTab.tabId === activeInfo.tabId && pipTab.windowId === activeInfo.windowId) {
+                scriptTabId = pipTab.tabId
             }
 
-            console.log('set CurrentTab: ' + activeInfo.tabId);
-            chrome.storage.local.set({'currentTab': activeInfo.tabId});
+            if (scriptTabId !== -2) {
+                console.log('EXECUTED SCRIPT on tab: ' + scriptTabId);
+                chrome.tabs.executeScript(scriptTabId, {file: 'script.js', allFrames: true});
+            }
+
+            chrome.storage.local.set({'lastTab': {'tabId': activeInfo.tabId, 'windowId': activeInfo.windowId}});
         });
     });
 
@@ -51,42 +52,20 @@ if (!document.pictureInPictureEnabled) {
         console.log('tabID: ' + tabId);
         console.log('tab.id: ' + tab.id);
         console.log('~~~~~~~~~~~~~~~~~~~');
-        chrome.storage.local.set({'currentTab': tabId});
+        chrome.storage.local.set({'lastTab': {'tabId': tab.id, 'windowId': tab.windowId}});
     });
-
-    // chrome.webNavigation.onCreatedNavigationTarget.addListener(details => {
-    //     console.log('~~webNavigation.onCreatedNavigationTarget~~');
-    //     console.log('sourceTabId: ' + details.sourceTabId);
-    //     console.log('~~~~~~~~~~~~~~~~~~~');
-    // })
 }
 
 chrome.browserAction.onClicked.addListener(tab => {
     chrome.storage.local.clear()
 });
 
-var _gaq = _gaq || [];
-_gaq.push(['_setAccount', 'UA-134864766-1']);
-
 chrome.runtime.onMessage.addListener( (request, sender, sendResponse) => {
     if (request.message === 'enter') {
-        _gaq.push(['_trackPageview']);
         console.log('ENTER SENDER TAB: ' + sender.tab.id);
-        chrome.storage.local.set({'pipTab': sender.tab.id});
+        chrome.storage.local.set({'pipTab': {'tabId': sender.tab.id, 'windowId': sender.tab.windowId}});
     } else if (request.message === 'leave') {
         console.log('LEAVE SENDER TAB: ' + sender.tab.id);
-        chrome.storage.local.set({'pipTab': -1});
+        chrome.storage.local.set({'pipTab': null});
     }
-});
-
-chrome.storage.sync.get({optOutAnalytics: false}, results => {
-    if (results.optOutAnalytics) {
-        return;
-    }
-    var ga = document.createElement('script');
-    ga.type = 'text/javascript';
-    ga.async = true;
-    ga.src = 'https://ssl.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0];
-    s.parentNode.insertBefore(ga, s);
 });

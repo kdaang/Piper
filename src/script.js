@@ -39,6 +39,7 @@
         video.setAttribute('__pip__', true);
         video.addEventListener('leavepictureinpicture', event => {
             video.removeAttribute('__pip__');
+            chrome.runtime.sendMessage({message: 'leave'});
         }, {once: true});
 
         chrome.runtime.sendMessage({message: 'enter'});
